@@ -2,9 +2,10 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 // Import routes (create as needed)
-// import authRoutes from './src/routes/auth.routes.js';
+import authRoutes from './src/routes/auth.routes.js';
 // import capsuleRoutes from './src/routes/capsule.routes.js';
 // import symptomRoutes from './src/routes/symptom.routes.js';
 // import aiRoutes from './src/routes/ai.routes.js';
@@ -17,6 +18,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // MongoDB Connection
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/ranger-med-core';
@@ -26,7 +28,7 @@ mongoose
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 // app.use('/api/capsule', capsuleRoutes);
 // app.use('/api/symptom', symptomRoutes);
 // app.use('/api/ai', aiRoutes);
