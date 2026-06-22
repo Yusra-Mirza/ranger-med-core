@@ -55,12 +55,18 @@ export const login = async (req, res) => {
     // If valid: generate accessToken(15min) and refreshToken(7days)
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
+    //save refresh token in cookies
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
 
     // Save refresh token in DB
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.json({ accessToken, refreshToken });
+    res.json({ accessToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -69,7 +75,7 @@ export const login = async (req, res) => {
 // POST /api/auth/refresh
 export const refresh = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken=req.cookies.refreshToken;
     console.log("R",refreshToken);
     if (!refreshToken) return res.status(401).json({ message: "No token" });
     
@@ -88,13 +94,21 @@ export const refresh = async (req, res) => {
       // Save the new refresh token in DB (rotation).
       user.refreshToken = newRefreshToken;
       await user.save();
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
 
+
+      
       res.json({
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
+        
       });
     });
-  } catch (err) {
+    }
+   catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
@@ -102,11 +116,15 @@ export const refresh = async (req, res) => {
 // POST /api/auth/logout
 export const logout = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken=req.cookies.refreshToken;
 
     // Remove the refresh token from DB
     await User.updateOne({ refreshToken }, { $unset: { refreshToken: "" } });
-
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
     res.json({ message: "Logged out" });
   } catch (err) {
     res.status(500).json({ error: err.message });

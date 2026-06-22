@@ -2,6 +2,7 @@ import axios from "axios";
 
 const instance = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
+  withCredentials:true
 });
 
 // ----- GLOBAL LOCK -----
@@ -61,18 +62,14 @@ instance.interceptors.response.use(
 
       // Otherwise → start refresh
       isRefreshing = true;
-      refreshPromise = instance.post("/auth/refresh", {
-        refreshToken: localStorage.getItem("refreshToken"),
-      });
+      refreshPromise = instance.post("/auth/refresh");
 
       try {
         const res = await refreshPromise;
 
         const newAccess = res.data.accessToken;
-        const newRefresh = res.data.refreshToken;
-
-        localStorage.setItem("accessToken", newAccess);
-        localStorage.setItem("refreshToken", newRefresh);
+        
+        setAccessToken(newAccess);
 
         instance.defaults.headers.common["Authorization"] = "Bearer " + newAccess;
 
@@ -83,8 +80,8 @@ instance.interceptors.response.use(
         return instance(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
+        setAccessToken(null);
+
         window.location.href = "/login";
         return Promise.reject(err);
       } finally {
