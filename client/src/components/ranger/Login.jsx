@@ -2,7 +2,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import './Login.css'
 import { loginRanger } from '../../api/auth'
-
+import { setAccessToken } from '../../api/axiosInstance' 
 function Login({ onLoginSuccess, onRegister }) {
   const [form, setForm] = useState({ operatorId: '', accessCode: '' })
   const [selectedRanger, setSelectedRanger] = useState('red')
@@ -88,9 +88,8 @@ function Login({ onLoginSuccess, onRegister }) {
     // clear storage
     localStorage.clear();
 
-    // save tokens
-    localStorage.setItem("accessToken", res.accessToken)
-    localStorage.setItem("refreshToken", res.refreshToken)
+    setAccessToken(res.accessToken);
+
     localStorage.setItem("rangerDesignation", "ranger")
 
     setTimeout(() => {

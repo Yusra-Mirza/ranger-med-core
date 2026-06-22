@@ -18,10 +18,20 @@ const processQueue = (error, token = null) => {
 };
 
 // Request interceptor
+let accessToken = null;
+
+export const setAccessToken = (token) => {
+  accessToken = token;
+};
+
+export const getAccessToken = () => {
+  return accessToken;
+};
+
 instance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) config.headers["Authorization"] = `Bearer ${token}`;
+    
+    if (accessToken) config.headers["Authorization"] = `Bearer ${accessToken}`;
     return config;
   },
   (error) => Promise.reject(error)
