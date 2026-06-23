@@ -5,19 +5,17 @@ import { generateDoses } from "../utils/doseScheduler.js";
 // POST /api/capsules/add
 export const addCapsule = async (req, res) => {
   try {
+    // Create capsule with timeSlots mapped directly from req.body.time
     const capsule = await Capsule.create({
       userId: req.user.id,
-      ...req.body
+      ...req.body,
+      timeSlots: req.body.time
     });
-    capsule.timeSlots = req.body.time;
 
     const doses = generateDoses(capsule);
 
-    // Save all doses
+    // Save all scheduled doses in bulk
     await Dose.insertMany(doses);
-
-    // Update capsule with refillDate and remaining stock
-    await capsule.save();
 
     res.json({
       message: "Capsule created and doses scheduled",
