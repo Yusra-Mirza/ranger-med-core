@@ -28,7 +28,10 @@ export const getSymptoms = async (req, res) => {
 // GET — Single symptom
 export const getSymptom = async (req, res) => {
   try {
-    const symptom = await Symptom.findById(req.params.id);
+    const symptom = await Symptom.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!symptom) {
+      return res.status(404).json({ error: "Symptom not found or unauthorized" });
+    }
     res.json(symptom);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -38,11 +41,14 @@ export const getSymptom = async (req, res) => {
 // PUT — Update status or fields
 export const updateSymptom = async (req, res) => {
   try {
-    const updated = await Symptom.findByIdAndUpdate(
-      req.params.id,
+    const updated = await Symptom.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
       req.body,
       { new: true }
     );
+    if (!updated) {
+      return res.status(404).json({ error: "Symptom not found or unauthorized" });
+    }
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -52,7 +58,10 @@ export const updateSymptom = async (req, res) => {
 // DELETE — Remove symptom
 export const deleteSymptom = async (req, res) => {
   try {
-    await Symptom.findByIdAndDelete(req.params.id);
+    const deleted = await Symptom.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!deleted) {
+      return res.status(404).json({ error: "Symptom not found or unauthorized" });
+    }
     res.json({ message: "Symptom deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -62,7 +71,7 @@ export const deleteSymptom = async (req, res) => {
 // GET — Progress
 export const getProgress = async (req, res) => {
   try {
-    const symptoms = await Symptom.find();
+    const symptoms = await Symptom.find({ userId: req.user.id });
 
     const grouped = {};
     symptoms.forEach(sym => {
