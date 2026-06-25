@@ -44,8 +44,16 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If token expired
-    if (error.response?.status === 403 && !originalRequest._retry) {
+    // Prevent infinite loop if the refresh request itself fails
+    if (originalRequest.url?.includes("/auth/refresh")) {
+      setAccessToken(null);
+      localStorage.clear();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    // If token expired or missing (401 or 403)
+    if ((error.response?.status === 403 || error.response?.status === 401) && !originalRequest._retry) {
       originalRequest._retry = true;
 
       // If refresh already in progress → wait

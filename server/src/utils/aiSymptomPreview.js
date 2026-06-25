@@ -32,7 +32,7 @@ export const aiSymptomPreview = async (text) => {
 
   try {
     const result = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         // Set temperature low to encourage structured output
@@ -80,7 +80,7 @@ export const analyzeSymptomAI = async (text, severity = null) => {
 
   try {
     const result = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         temperature: 0.2,

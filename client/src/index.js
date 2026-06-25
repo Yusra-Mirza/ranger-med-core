@@ -5,7 +5,8 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import App from './App';
 import './index.css';
-
+import axios from 'axios';
+axios.defaults.withCredentials=true;
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 const isDev = process.env.NODE_ENV === "development";

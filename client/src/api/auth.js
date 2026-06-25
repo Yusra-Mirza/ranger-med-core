@@ -1,29 +1,28 @@
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+import axios from "./axiosInstance";
 
 export const registerRanger = async (data) => {
-  const response = await fetch(`${API_URL}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-
-  return response.json();
+  try {
+    const response = await axios.post("/auth/register", data);
+    return response.data;
+  } catch (error) {
+    return error.response?.data || { error: error.message };
+  }
 };
 
 export const loginRanger = async (data) => {
-  const res = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-  return res.json();
+  try {
+    const response = await axios.post("/auth/login", data);
+    return response.data;
+  } catch (error) {
+    return error.response?.data || { error: error.message };
+  }
 };
 
 export const logoutRanger = async (data) => {
-    const res = await fetch(`${API_URL}/auth/logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    return res.json()
-}
+  try {
+    const response = await axios.post("/auth/logout", data);
+    return response.data;
+  } catch (error) {
+    return error.response?.data || { error: error.message };
+  }
+};

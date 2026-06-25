@@ -19,8 +19,11 @@ import weeklyInsightRoutes from "./src/routes/weeklyInsight.routes.js";
 import calendarRoutes from "./src/routes/calendar.routes.js";
 // import aiRoutes from "./src/routes/ai.routes.js";
 
-const app = express();
 
+
+import cookieParser from "cookie-parser";
+const app = express();
+app.use(cookieParser());
 // Load environment variables first
 dotenv.config();
 

@@ -64,8 +64,8 @@ function LoginPage({ onLoginSuccess, showRegister, onRegister, onBackToLogin }) 
  * ProtectedRoute - Token-based protection for ranger routes
  */
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem("accessToken");
-  if (!token) return <Navigate to="/login" replace />;
+  const isLogged = localStorage.getItem("rangerDesignation");
+  if (!isLogged) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -82,8 +82,8 @@ function DoctorProtectedRoute({ children }) {
  * LoggedInRedirect - If already logged in, skip login page
  */
 function LoggedInRedirect({ children }) {
-  const token = localStorage.getItem("accessToken");
-  if (token) return <Navigate to="/dashboard" replace />;
+  const isLogged= localStorage.getItem("rangerDesignation");
+  if (isLogged) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
