@@ -7,10 +7,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SymptomChecker.css';
+import axiosInstance from '../../api/axiosInstance';
 
 function SymptomChecker() {
   const navigate = useNavigate();
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [customDescription, setCustomDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
@@ -77,20 +79,88 @@ function SymptomChecker() {
   };
 
   const handleAnalyze = async () => {
-    if (selectedSymptoms.length === 0) {
-      alert('Please select at least one symptom');
+    if (selectedSymptoms.length === 0 && !customDescription.trim()) {
+      alert('Please select at least one symptom or describe your symptoms');
       return;
     }
 
     setAnalyzing(true);
-    
-    // Simulate AI analysis
-    setTimeout(() => {
-      const mockResults = generateAnalysis(selectedSymptoms);
-      setAnalysisResults(mockResults);
-      setAnalyzing(false);
+
+    try {
+      // 1. Map the selected checkbox IDs to the format our backend expects
+      const symptomsPayload = selectedSymptoms.map(id => {
+        const details = Object.values(symptomCategories)
+          .flat()
+          .find(s => s.id === id);
+          
+        return {
+          name: details ? details.name : id,
+          severity: details && details.severity === 'serious' ? 'severe' :
+                    details && details.severity === 'moderate' ? 'moderate' : 'mild',
+          duration: "recent",
+          bodyPart: "General"
+        };
+      });
+
+      // 2. If no checkboxes were ticked but description is typed, provide a dummy symptom to pass backend validation
+      if (symptomsPayload.length === 0 && customDescription.trim()) {
+        symptomsPayload.push({
+          name: customDescription.trim().slice(0, 50),
+          severity: "moderate",
+          duration: "recent",
+          bodyPart: "General"
+        });
+      }
+
+      // 3. Combine checkboxes with custom typed description
+      const checkboxesText = selectedSymptoms.map(id => {
+        const details = Object.values(symptomCategories).flat().find(s => s.id === id);
+        return details ? details.name : id;
+      }).join(", ");
+
+      let finalDescription = "";
+      if (customDescription.trim()) {
+        finalDescription = `User description: "${customDescription.trim()}". ${checkboxesText ? `Selected checkboxes: ${checkboxesText}.` : ""}`;
+      } else {
+        finalDescription = checkboxesText;
+      }
+
+      // 4. Call our real backend API (which calls Google Gemini!)
+      const response = await axiosInstance.post("/symptom-analysis/analyze", {
+        symptoms: symptomsPayload,
+        customPromptText: finalDescription, // send description
+        age: 25, // test age
+        gender: "other"
+      });
+
+      const realAnalysis = response.data.analysis;
+
+      // 5. Frontend Adaptor: Map backend fields to match what the UI expects
+      const uiResults = {
+        riskLevel: realAnalysis.possibleConditions[0]?.severity === 'high' ? 'high' :
+                   realAnalysis.possibleConditions[0]?.severity === 'medium' ? 'moderate' : 'low',
+        possibleConditions: realAnalysis.possibleConditions.map(cond => ({
+          name: cond.name,
+          probability: cond.probability || 85,
+          description: cond.description,
+          recommendations: realAnalysis.recommendations || []
+        })),
+        urgencyLevel: realAnalysis.urgencyLevel === 'emergency' || realAnalysis.urgencyLevel === 'urgent' ? 'urgent' :
+                      realAnalysis.urgencyLevel === 'soon' ? 'soon' : 'routine',
+        nextSteps: realAnalysis.selfCareAdvice || [],
+        doctorConsultation: response.data.followUpRequired ? 'recommended' : 'optional'
+      };
+
+      // 6. Save to React state to draw on the screen
+      setAnalysisResults(uiResults);
       setAnalysisComplete(true);
-    }, 3000);
+
+    } catch (err) {
+      console.error("AI Analysis failed:", err);
+      alert(err.response?.data?.message || "Failed to analyze symptoms using Gemini AI.");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const generateAnalysis = (symptoms) => {
@@ -224,11 +294,36 @@ function SymptomChecker() {
             ))}
           </div>
 
+          {/* Custom Description Textarea */}
+          <div className="custom-description-section" style={{ marginTop: '20px', marginBottom: '20px' }}>
+            <h3 className="category-title" style={{ fontSize: '1.2rem', color: '#ff8800', fontFamily: 'Orbitron, sans-serif', marginBottom: '10px' }}>Describe Symptoms in Your Own Words</h3>
+            <textarea
+              className="cyber-textarea"
+              placeholder="Or describe how you feel in detail (e.g. 'I have a throbbing headache, feeling dizzy and a bit nauseous since morning training session')..."
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+              rows={4}
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(26, 31, 58, 0.6)',
+                border: '1px solid rgba(0, 255, 255, 0.3)',
+                borderRadius: '8px',
+                color: '#fff',
+                padding: '12px',
+                fontSize: '14px',
+                fontFamily: 'monospace',
+                resize: 'none',
+                outline: 'none',
+                boxShadow: 'inset 0 0 10px rgba(0, 255, 255, 0.1)'
+              }}
+            />
+          </div>
+
           <div className="action-section">
             <button 
               className="analyze-btn"
               onClick={handleAnalyze}
-              disabled={selectedSymptoms.length === 0 || analyzing}
+              disabled={(selectedSymptoms.length === 0 && !customDescription.trim()) || analyzing}
             >
               {analyzing ? (
                 <>
@@ -246,6 +341,7 @@ function SymptomChecker() {
               className="clear-btn"
               onClick={() => {
                 setSelectedSymptoms([]);
+                setCustomDescription('');
                 setAnalysisComplete(false);
                 setAnalysisResults(null);
               }}

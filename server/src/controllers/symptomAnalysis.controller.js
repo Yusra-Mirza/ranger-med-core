@@ -1,6 +1,7 @@
 import SymptomAnalysis from "../models/SymptomAnalysis.js";
 import { analyzeSymptoms, getFollowUpQuestions } from "../services/symptomAnalysis.service.js";
 
+import {analyzeSymptomAI} from "../utils/aiSymptomPreview.js"
 /**
  * Analyze symptoms using AI and store results
  * POST /api/symptom-analysis/analyze
@@ -55,14 +56,56 @@ export const analyzeUserSymptoms = async (req, res) => {
     await pendingAnalysis.save();
 
     // Call AI service for analysis
-    const aiResult = await analyzeSymptoms({
-      symptoms: pendingAnalysis.symptoms,
-      age,
-      gender,
-      existingConditions,
-      medications,
-      allergies
-    });
+    let symptomDescription = req.body.customPromptText;
+    
+    if (!symptomDescription) {
+      symptomDescription = symptoms.map(s => {
+        return `${s.name} (severity: ${s.severity}, duration: ${s.duration}, bodypart: ${s.bodyPart || "General"})`;
+      }).join(" ");
+    }
+
+    const geminiResult = await analyzeSymptomAI(symptomDescription);
+
+    const aiResult = {
+      analysis: {
+        possibleConditions: [
+          {
+            name: geminiResult.predictedCondition,
+            probability: 90,
+            description: geminiResult.explanation,
+            severity: geminiResult.riskLevel,
+          },
+        ],
+        urgencyLevel:
+          geminiResult.urgencyLevel >= 9
+            ? "emergency"
+            : geminiResult.urgencyLevel >= 6
+              ? "urgent"
+              : geminiResult.urgencyLevel >= 3
+                ? "soon"
+                : "routine",
+        recommendations: [
+          "Seek care based on your urgency recommendation.",
+          `Primary concern: ${geminiResult.predictedCondition} (${geminiResult.category} category)`,
+        ],
+        redFlags: geminiResult.isSerious
+          ? ["Immediate Attention: Serious symptoms detected. Seek care."]
+          : [],
+        selfCareAdvice: ["Rest and hydrate.", geminiResult.explanation],
+        whenToSeekCare:
+          geminiResult.urgencyLevel >= 6
+            ? "Seek care immediately."
+            : "Monitor symptoms and seek care if they worsen.",
+        estimatedRecovery: "Varies",
+        preventiveMeasures: ["Practice hygiene."],
+      },
+      aiModel: {
+        provider: "gemini",
+        modelVersion: "gemini-2.5-pro",
+        confidence: Math.round(geminiResult.severity * 10),
+        processingTime: 0,
+      },
+    };
 
     // Update analysis with AI results
     pendingAnalysis.analysis = aiResult.analysis;
