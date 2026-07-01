@@ -3,7 +3,7 @@ import Dose from "../models/Dose.js";
 import Symptom from "../models/Symptom.js";
 import SymptomAnalysis from "../models/SymptomAnalysis.js";
 import Capsule from "../models/Capsule.js";
-
+import { analyzeWeeklyHealthAI } from "../utils/aiWeeklyInsight.js";
 /**
  * Get week number and year from a date
  */
@@ -351,16 +351,24 @@ export async function generateWeeklyInsight(userId, date = new Date()) {
     let insight = await WeeklyInsight.findOne({
       userId,
       weekNumber,
-      year
+      year,
     });
 
-    if (insight && insight.status === 'generated') {
+    if (insight && insight.status === "generated") {
       return insight; // Return existing insight
     }
 
     // Calculate all metrics
-    const medicationAdherence = await calculateMedicationAdherence(userId, weekStartDate, weekEndDate);
-    const symptomTracking = await calculateSymptomMetrics(userId, weekStartDate, weekEndDate);
+    const medicationAdherence = await calculateMedicationAdherence(
+      userId,
+      weekStartDate,
+      weekEndDate,
+    );
+    const symptomTracking = await calculateSymptomMetrics(
+      userId,
+      weekStartDate,
+      weekEndDate,
+    );
     const patterns = await analyzePatterns(userId, weekStartDate, weekEndDate);
 
     // Create or update insight
@@ -370,7 +378,7 @@ export async function generateWeeklyInsight(userId, date = new Date()) {
         weekStartDate,
         weekEndDate,
         weekNumber,
-        year
+        year,
       });
     }
 
@@ -383,19 +391,23 @@ export async function generateWeeklyInsight(userId, date = new Date()) {
     const prevWeekInsight = await WeeklyInsight.findOne({
       userId,
       weekNumber: weekNumber - 1,
-      year
+      year,
     });
 
     if (prevWeekInsight) {
-      const change = medicationAdherence.adherenceRate - prevWeekInsight.medicationAdherence.adherenceRate;
-      if (change > 5) insight.medicationAdherence.improvement = 'better';
-      else if (change < -5) insight.medicationAdherence.improvement = 'worse';
-      else insight.medicationAdherence.improvement = 'same';
+      const change =
+        medicationAdherence.adherenceRate -
+        prevWeekInsight.medicationAdherence.adherenceRate;
+      if (change > 5) insight.medicationAdherence.improvement = "better";
+      else if (change < -5) insight.medicationAdherence.improvement = "worse";
+      else insight.medicationAdherence.improvement = "same";
 
-      const symptomChange = symptomTracking.activeSymptoms - prevWeekInsight.symptomTracking.activeSymptoms;
-      if (symptomChange < 0) insight.symptomTracking.trend = 'improving';
-      else if (symptomChange > 0) insight.symptomTracking.trend = 'worsening';
-      else insight.symptomTracking.trend = 'stable';
+      const symptomChange =
+        symptomTracking.activeSymptoms -
+        prevWeekInsight.symptomTracking.activeSymptoms;
+      if (symptomChange < 0) insight.symptomTracking.trend = "improving";
+      else if (symptomChange > 0) insight.symptomTracking.trend = "worsening";
+      else insight.symptomTracking.trend = "stable";
     }
 
     // Calculate health scores
@@ -410,14 +422,34 @@ export async function generateWeeklyInsight(userId, date = new Date()) {
     // Check achievements
     insight.checkAchievements();
 
-    // Generate insights
-    insight.generateInsights();
+    // Generate AI Summary and Insights using Gemini
+    try {
+      const statsPayload = {
+        adherenceRate: medicationAdherence.adherenceRate,
+        streak: medicationAdherence.streak,
+        missedDoses: medicationAdherence.missedDoses,
+        activeSymptoms: symptomTracking.activeSymptoms,
+        averageSeverity: symptomTracking.averageSeverity,
+        mostCommonSymptom: symptomTracking.mostCommonSymptom?.name || "None",
+        overallHealthScore: insight.healthScore.overall,
+        achievements: insight.achievements.map((a) => a.title).join(", "),
+      };
 
-    // Generate summary
-    insight.summary = generateSummary(insight);
+      const aiResult = await analyzeWeeklyHealthAI(statsPayload);
+      insight.summary = aiResult.summary;
+      insight.insights = aiResult.insights;
+    } catch (aiError) {
+      console.error(
+        "Failed to generate AI weekly insights, falling back to rule-based insights:",
+        aiError,
+      );
+      // Fallback to static rule-based system if Gemini fails
+      insight.generateInsights();
+      insight.summary = generateSummary(insight);
+    }
 
     // Update status
-    insight.status = 'generated';
+    insight.status = "generated";
     insight.generatedAt = new Date();
 
     await insight.save();
