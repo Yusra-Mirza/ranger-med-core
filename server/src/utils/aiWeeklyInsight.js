@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 dotenv.config();
-
+import { retryWithBackoff } from "./retryHelper.js";
 // Initialize the Gemini client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -43,13 +43,16 @@ export const analyzeWeeklyHealthAI = async (stats) => {
   `;
 
   try {
-    const result = await ai.models.generateContent({
+    const result = await retryWithBackoff(()=>
+    ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         temperature: 0.2, // Low temperature keeps JSON schema structure deterministic
       },
-    });
+      
+    })
+  );
 
     let jsonString = result.text.trim();
     if (jsonString.startsWith("```json")) {

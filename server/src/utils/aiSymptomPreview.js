@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import dotenv from "dotenv";
 dotenv.config();
+import { retryWithBackoff } from './retryHelper.js';
 // Initialize the GoogleGenAI client. 
 // Pass the key directly to the client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -79,13 +80,15 @@ export const analyzeSymptomAI = async (text, severity = null) => {
   `;
 
   try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        temperature: 0.2,
-      }
-    });
+    const result = await retryWithBackoff(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          temperature: 0.2,
+        }
+      })
+    );
     
     // The output is a string, so we need to parse it as JSON
     let jsonString = result.text.trim();
