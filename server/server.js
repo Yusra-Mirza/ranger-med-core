@@ -27,9 +27,13 @@ app.use(cookieParser());
 // Load environment variables first
 dotenv.config();
 
-// CORS Configuration - Allow requests from React app
+// CORS Configuration - Allow requests from React app and deployed frontend
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:3001', 
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true,
   optionsSuccessStatus: 200
 };
