@@ -24,6 +24,7 @@ html {
 
 /* Prevent layout shift when hiding scrollbar */
 body {
+  margin: 0;
   -ms-overflow-style: none; /* IE and Edge */
-  overflow-y: scroll;       /* Keep scrolling enabled */
+  overflow-y: auto;       /* Only scroll when content actually exceeds viewport */
 }
